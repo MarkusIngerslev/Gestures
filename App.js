@@ -4,19 +4,48 @@ import {
   PanGestureHandler,
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue,
+  useAnimatedGestureHandler,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 export default function App() {
-  function onGestureEvent(event) {
-    const { translationX, translationY } = event.nativeEvent;
-    console.log("X: ", translationX);
-    console.log("Y: ", translationY);
-  }
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const onGestureEvent = useAnimatedGestureHandler({
+    onStart: (_, ctx) => {
+      ctx.startX = translateX.value;
+      ctx.startY = translateY.value;
+    },
+    onActive: (event, ctx) => {
+      translateX.value = ctx.startX + event.translationX;
+      translateY.value = ctx.startY + event.translationY;
+    },
+    onEnd: () => {
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+    },
+  });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+      ],
+    };
+  });
 
   return (
     <GestureHandlerRootView style={styles.rootView}>
       <View style={styles.container}>
         <PanGestureHandler onGestureEvent={onGestureEvent}>
-          <Text>Drag and watch console log</Text>
+          <Animated.View style={animatedStyle}>
+            <Text>Drag and watch console log</Text>
+          </Animated.View>
         </PanGestureHandler>
         <StatusBar style="auto" />
       </View>
