@@ -14,8 +14,8 @@ import { useState } from "react";
 
 export default function App() {
   const [images, setImages] = useState([
-    { id: 1, imgUrl: require("./assets/cat blush.png") },
-    { id: 2, imgUrl: require("./assets/cat nerd.jpg") },
+    { id: 1, imgUrl: require("./assets/cat_blush.png") },
+    { id: 2, imgUrl: require("./assets/cat_nerd.jpg") },
     { id: 3, imgUrl: require("./assets/YIPPIES.jpg") },
   ]);
 
