@@ -1,61 +1,85 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
-import {
-  PanGestureHandler,
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import { StyleSheet, Text, View, Image } from "react-native";
 import Animated, {
   useSharedValue,
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   withSpring,
+  runOnJS,
 } from "react-native-reanimated";
+import {
+  GestureDetector,
+  Gesture,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import { useState } from "react";
 
 export default function App() {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
+  const [images, setImages] = useState([
+    { id: 1, imgUrl: require("./assets/cat blush.png") },
+    { id: 2, imgUrl: require("./assets/cat nerd.jpg") },
+    { id: 3, imgUrl: require("./assets/YIPPIES.jpg") },
+  ]);
 
-  const onGestureEvent = useAnimatedGestureHandler({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-      ctx.startY = translateY.value;
-    },
-    onActive: (event, ctx) => {
-      translateX.value = ctx.startX + event.translationX;
-      translateY.value = ctx.startY + event.translationY;
-    },
-    onEnd: () => {
-      translateX.value = withSpring(0);
-      translateY.value = withSpring(0);
-    },
-  });
+  function handleSwipeOff(cardId) {
+    setImages((prevCards) => prevCards.filter((card) => card.id !== cardId));
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {images.map((image) => (
+        <MyCard
+          key={image.id}
+          image={image.imgUrl}
+          onSwipeOff={() => handleSwipeOff(image.id)}
+        />
+      ))}
+    </GestureHandlerRootView>
+  );
+}
+
+const MyCard = ({ image, onSwipeOff }) => {
+  const translateX = useSharedValue(0);
+  const rotate = useSharedValue(0);
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      "worklet";
+      translateX.value = event.translationX;
+      rotate.value = (translateX.value / 250) * -10;
+    })
+    .onEnd(() => {
+      "worklet";
+      if (Math.abs(translateX.value) > 150) {
+        translateX.value = translateX.value > 0 ? 500 : -500;
+        runOnJS(onSwipeOff)(image.id);
+      } else {
+        translateX.value = withSpring(0);
+        rotate.value = withSpring(0);
+      }
+    });
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         { translateX: translateX.value },
-        { translateY: translateY.value },
+        { rotate: `${rotate.value}deg` },
       ],
     };
   });
 
   return (
-    <GestureHandlerRootView style={styles.rootView}>
-      <View style={styles.container}>
-        <PanGestureHandler onGestureEvent={onGestureEvent}>
-          <Animated.View style={animatedStyle}>
-            <Text>Drag and watch console log</Text>
-          </Animated.View>
-        </PanGestureHandler>
-        <StatusBar style="auto" />
-      </View>
-    </GestureHandlerRootView>
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[animatedStyle, styles.container]}>
+        <Image source={image} style={styles.imgStyle} />
+      </Animated.View>
+    </GestureDetector>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  rootView: {
-    flex: 1,
+  imgStyle: {
+    width: 200,
+    height: 200,
+    borderRadius: 20,
   },
   container: {
     flex: 1,
