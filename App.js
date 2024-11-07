@@ -1,9 +1,10 @@
-import { StyleSheet, Text, View, Image } from "react-native";
+import { StyleSheet, View, Image } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
+  useDerivedValue,
 } from "react-native-reanimated";
 import {
   GestureDetector,
@@ -19,72 +20,81 @@ export default function App() {
     { id: 3, imgUrl: require("./assets/YIPPIES.jpg") },
   ]);
 
-  function handleSwipeOff(cardId) {
-    setImages((prevCards) => prevCards.filter((card) => card.id !== cardId));
-  }
+  const handleReorder = (draggedIndex, targetIndex) => {
+    setImages((prevImages) => {
+      const newImages = [...prevImages];
+      const [removedImage] = newImages.splice(draggedIndex, 1);
+      newImages.splice(targetIndex, 0, removedImage);
+      return newImages;
+    });
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {images.map((image) => (
-        <MyCard
-          key={image.id}
-          image={image.imgUrl}
-          onSwipeOff={() => handleSwipeOff(image.id)}
-        />
-      ))}
+      <View style={styles.container}>
+        {images.map((image, index) => (
+          <ImageCard
+            key={image.id}
+            image={image.imgUrl}
+            index={index}
+            onReorder={handleReorder}
+          />
+        ))}
+      </View>
     </GestureHandlerRootView>
   );
 }
 
-const MyCard = ({ image, onSwipeOff }) => {
-  const translateX = useSharedValue(0);
-  const rotate = useSharedValue(0);
+const ImageCard = ({ image, index, onReorder }) => {
+  const translateY = useSharedValue(0);
+  const opacity = useDerivedValue(() => {
+    return withSpring(translateY.value === 0 ? 1 : 0.5);
+  });
 
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
       "worklet";
-      translateX.value = event.translationX;
-      rotate.value = (translateX.value / 250) * -10;
+      translateY.value = event.translationY;
     })
     .onEnd(() => {
       "worklet";
-      if (Math.abs(translateX.value) > 150) {
-        translateX.value = translateX.value > 0 ? 500 : -500;
-        runOnJS(onSwipeOff)(image.id);
-      } else {
-        translateX.value = withSpring(0);
-        rotate.value = withSpring(0);
+      if (Math.abs(translateY.value) > 100) {
+        const direction = translateY.value > 0 ? 1 : -1;
+        runOnJS(onReorder)(index, index + direction);
       }
+      translateY.value = withSpring(0);
     });
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [
-        { translateX: translateX.value },
-        { rotate: `${rotate.value}deg` },
-      ],
+      transform: [{ translateY: translateY.value }],
+      opacity: opacity.value,
     };
   });
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[animatedStyle, styles.container]}>
-        <Image source={image} style={styles.imgStyle} />
+      <Animated.View style={[animatedStyle, styles.imageContainer]}>
+        <Image source={image} style={styles.image} />
       </Animated.View>
     </GestureDetector>
   );
 };
 
 const styles = StyleSheet.create({
-  imgStyle: {
-    width: 200,
-    height: 200,
-    borderRadius: 20,
-  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 20,
+  },
+  imageContainer: {
+    marginVertical: 10,
+  },
+  image: {
+    width: 200,
+    height: 200,
+    borderRadius: 20,
   },
 });
